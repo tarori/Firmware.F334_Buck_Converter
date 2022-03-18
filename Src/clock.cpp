@@ -68,11 +68,11 @@ extern HRTIM_HandleTypeDef hhrtim1;
 bool callback_start = false;
 void SysTick_Handler()
 {
+    HAL_IncTick();
     if (!callback_start) {
         return;
     }
     callback_1ms();
-    HAL_IncTick();
 }
 
 /**
