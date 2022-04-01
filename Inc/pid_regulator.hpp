@@ -21,7 +21,7 @@ public:
         float output_i = i_gain * integ;
         float output_d = d_gain * (data - prev) / dt;
         float output = output_p + output_i + output_d;
-        if (output < max_output && output > min_output) {
+        if ((output < max_output && i_gain * data > 0) || (output > min_output && i_gain * data < 0)) {
             integ += data * dt;
         }
         prev = data;

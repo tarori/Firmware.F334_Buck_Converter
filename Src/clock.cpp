@@ -80,11 +80,15 @@ void SysTick_Handler()
  */
 void HRTIM1_TIMA_IRQHandler(void)
 {
-    HAL_HRTIM_IRQHandler(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A);
+    GPIOA->BSRR = (uint32_t)GPIO_PIN_10;
+
+    // HAL_HRTIM_IRQHandler(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A);
+    __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_TIM_IT_UPD);
     if (!callback_start) {
         return;
     }
     callback_10us();
+    GPIOA->BRR = (uint32_t)GPIO_PIN_10;
 }
 
 /**
@@ -93,6 +97,7 @@ void HRTIM1_TIMA_IRQHandler(void)
 void DMA1_Channel1_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(&hdma_adc1);
+    printf("dma1\n");
 }
 
 /**
@@ -101,5 +106,6 @@ void DMA1_Channel1_IRQHandler(void)
 void DMA1_Channel2_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(&hdma_adc2);
+    printf("dma2\n");
 }
 }  // extern "C"
