@@ -52,7 +52,7 @@ void main_loop()
     HAL_ADC_Start(&hadc1);
 
     while (1) {
-        printf("%.2f V  %.3f A\n", Control::actual_voltage, Control::actual_current);
+        printf("%.3f V  %.4f A\n", Control::actual_voltage, Control::actual_current);
         delay_ms(1000);
     }
 }
