@@ -97,7 +97,7 @@ void HRTIM1_TIMA_IRQHandler(void)
 void DMA1_Channel1_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(&hdma_adc1);
-    printf("dma1\n");
+    printf("DMA1 handler called\n");
 }
 
 /**
@@ -106,6 +106,6 @@ void DMA1_Channel1_IRQHandler(void)
 void DMA1_Channel2_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(&hdma_adc2);
-    printf("dma2\n");
+    printf("DMA2 handler called\n");
 }
 }  // extern "C"

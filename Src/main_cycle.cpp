@@ -5,6 +5,7 @@
 #include "adc.h"
 #include "clock.hpp"
 #include <stm32f3xx.h>
+
 #include "pwm.hpp"
 #include "pid_regulator.hpp"
 #include "lcd.hpp"
@@ -14,8 +15,8 @@ extern bool callback_start;
 PIDRegulator v_regulator(-0.1f, -100.0f, -0.0f, dt, 0, vbus);
 PIDRegulator i_regulator(-10.0f, -10000.0f, 0, dt, 0, vbus);
 
-volatile uint16_t voltage_adc_buf;
-volatile uint16_t current_adc_buf;
+alignas(4) uint16_t adc1_buf[1];
+alignas(4) uint16_t adc2_buf[1];
 
 GPIO_PIN lcd_e(GPIOB, GPIO_PIN_5), lcd_rs(GPIOA, GPIO_PIN_0);
 GPIO_PIN lcd_d4(GPIOA, GPIO_PIN_1), lcd_d5(GPIOA, GPIO_PIN_2), lcd_d6(GPIOA, GPIO_PIN_3), lcd_d7(GPIOA, GPIO_PIN_4);
@@ -38,10 +39,12 @@ void main_loop()
     HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TA2);
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_TIMER_A);
 
-    // HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&voltage_adc_buf, 1);
-    // HAL_ADC_Start_DMA(&hadc2, (uint32_t*)&current_adc_buf, 1);
-    HAL_ADC_Start(&hadc1);
-    HAL_ADC_Start(&hadc2);
+    __disable_irq();
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, 1);
+    hadc1.DMA_Handle->Instance->CCR &= ~(DMA_IT_TC | DMA_IT_HT);
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2_buf, 1);
+    hadc2.DMA_Handle->Instance->CCR &= ~(DMA_IT_TC | DMA_IT_HT);
+    __enable_irq();
 
     lcd.init();
 
@@ -53,7 +56,7 @@ void main_loop()
 
     while (1) {
         printf("%.3f V  %.4f A\n", Control::actual_voltage, Control::actual_current);
-        delay_ms(1000);
+        delay_ms(200);
     }
 }
 
@@ -68,15 +71,12 @@ constexpr float shunt_resistance = 0.1f;
 constexpr float voltage_mul = vref / 4096 * (11.5f / 1.5f);
 constexpr float current_mul = vref / 4096 / (11.5f / 1.5f) / shunt_resistance;
 constexpr float voltage_offset = 0.375f;
-constexpr float current_offset = -0.12f;
+constexpr float current_offset = -0.128f;
 
 void callback_10us()
 {
-    voltage_adc_buf = HAL_ADC_GetValue(&hadc1);
-    current_adc_buf = HAL_ADC_GetValue(&hadc2);
-
-    Control::actual_voltage = voltage_adc_buf * voltage_mul + voltage_offset;
-    Control::actual_current = current_adc_buf * current_mul + current_offset;
+    Control::actual_voltage = adc1_buf[0] * voltage_mul + voltage_offset;
+    Control::actual_current = adc2_buf[0] * current_mul + current_offset;
 
     Control::output_v = v_regulator(Control::actual_voltage - Control::target_voltage);
     Control::output_i = i_regulator(Control::actual_current - Control::target_current);
