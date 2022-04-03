@@ -12,8 +12,8 @@
 
 extern bool callback_start;
 
-PIDRegulator v_regulator(-0.1f, -100.0f, -0.0f, dt, 0, vbus);
-PIDRegulator i_regulator(-10.0f, -10000.0f, 0, dt, 0, vbus);
+PIDRegulator v_regulator(-0.01f, -1000.0f, -0.0f, dt, 0, vbus);
+PIDRegulator i_regulator(-1.0f, -1000.0f, 0, dt, 0, vbus);
 
 alignas(4) uint16_t adc1_buf[2];
 alignas(4) uint16_t adc2_buf[2];
@@ -26,17 +26,17 @@ namespace Control
 {
 float actual_voltage;
 float actual_current;
-float target_voltage;
-float target_current;
+float target_voltage = 0.0f;
+float target_current = 0.0f;
 float output_v;
 float output_i;
 float output;
+bool emergency_occured = false;
 }  // namespace Control
 
 void main_loop()
 {
     HAL_OPAMP_Start(&hopamp2);
-    HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TA2);
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_TIMER_A);
 
     __disable_irq();
@@ -50,33 +50,68 @@ void main_loop()
 
     printf("Hello, I am working at %ldMHz\n", SystemCoreClock / 1000 / 1000);
     lcd.printf("Hello\nWorking at %ldMHz\n", SystemCoreClock / 1000 / 1000);
+    delay_ms(1000);
 
     callback_start = true;
 
     while (1) {
-        printf("%.3f V  %.4f A\n", Control::actual_voltage, Control::actual_current);
-        printf("%d  %d\n", adc1_buf[1], adc2_buf[1]);
+        // printf("%.3f V  %.4f A\n", Control::actual_voltage, Control::actual_current);
+        lcd.locate(0, 0);
+        lcd.printf("T:%6.2fV %5.2fA", Control::target_voltage, Control::target_current);
+        lcd.locate(0, 1);
+        lcd.printf("A:%6.2fV %5.2fA", Control::actual_voltage, Control::actual_current);
         delay_ms(250);
     }
 }
 
-void callback_1ms()
+constexpr float voltage_step = 0.25f;
+constexpr float current_step = 0.1f;
+
+void callback_10ms()
 {
-    Control::target_voltage = 5.0f;
-    Control::target_current = 0.3f;
+    float voltage_volume = adc2_buf[1] / 4096.0f * 20.0f;
+    float current_volume = adc1_buf[1] / 4096.0f * 6.0f;
+
+    if (voltage_volume > Control::target_voltage + voltage_step) {
+        Control::target_voltage += voltage_step;
+    }
+    if (voltage_volume < Control::target_voltage - voltage_step) {
+        Control::target_voltage -= voltage_step;
+    }
+
+
+    if (current_volume > Control::target_current + current_step) {
+        Control::target_current += current_step;
+    }
+    if (current_volume < Control::target_current - current_step) {
+        Control::target_current -= current_step;
+    }
 }
 
-constexpr float vref = 3.3f;
-constexpr float shunt_resistance = 0.1f;
+constexpr float vref = 3.28f;
+constexpr float shunt_resistance = 0.05f;
 constexpr float voltage_mul = vref / 4096 * (11.5f / 1.5f);
 constexpr float current_mul = vref / 4096 / (11.5f / 1.5f) / shunt_resistance;
-constexpr float voltage_offset = 0.375f;
-constexpr float current_offset = -0.128f;
+constexpr float voltage_offset = 0.32f;
+constexpr float current_offset = -0.26f;
+
+constexpr float emergency_voltage = 24.0f;
+constexpr float emergency_current = 100.0f;
 
 void callback_10us()
 {
+    if (Control::emergency_occured) {
+        return;
+    }
+
     Control::actual_voltage = adc1_buf[0] * voltage_mul + voltage_offset;
     Control::actual_current = adc2_buf[0] * current_mul + current_offset;
+
+    if (Control::actual_current > emergency_current || Control::actual_voltage > emergency_voltage) {
+        pwm_free();
+        Control::emergency_occured = true;
+        return;
+    }
 
     Control::output_v = v_regulator(Control::actual_voltage - Control::target_voltage);
     Control::output_i = i_regulator(Control::actual_current - Control::target_current);

@@ -10,7 +10,7 @@ uint32_t systick_max_value;
 void clock_init()
 {
     SystemCoreClockUpdate();
-    systick_max_value = SystemCoreClock / 1000;
+    systick_max_value = SystemCoreClock / 100;
 
     HAL_SYSTICK_Config(systick_max_value);
     HAL_NVIC_SetPriority(SysTick_IRQn, 4, 0);
@@ -72,7 +72,7 @@ void SysTick_Handler()
     if (!callback_start) {
         return;
     }
-    callback_1ms();
+    callback_10ms();
 }
 
 /**
