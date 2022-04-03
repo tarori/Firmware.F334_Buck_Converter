@@ -15,11 +15,11 @@ extern bool callback_start;
 PIDRegulator v_regulator(-0.1f, -100.0f, -0.0f, dt, 0, vbus);
 PIDRegulator i_regulator(-10.0f, -10000.0f, 0, dt, 0, vbus);
 
-alignas(4) uint16_t adc1_buf[1];
-alignas(4) uint16_t adc2_buf[1];
+alignas(4) uint16_t adc1_buf[2];
+alignas(4) uint16_t adc2_buf[2];
 
-GPIO_PIN lcd_e(GPIOB, GPIO_PIN_5), lcd_rs(GPIOA, GPIO_PIN_0);
-GPIO_PIN lcd_d4(GPIOA, GPIO_PIN_1), lcd_d5(GPIOA, GPIO_PIN_2), lcd_d6(GPIOA, GPIO_PIN_3), lcd_d7(GPIOA, GPIO_PIN_4);
+GPIO_PIN lcd_e(GPIOA, GPIO_PIN_1), lcd_rs(GPIOA, GPIO_PIN_2);
+GPIO_PIN lcd_d4(GPIOA, GPIO_PIN_0), lcd_d5(GPIOB, GPIO_PIN_7), lcd_d6(GPIOB, GPIO_PIN_5), lcd_d7(GPIOA, GPIO_PIN_12);
 LCD lcd(lcd_rs, lcd_e, lcd_d4, lcd_d5, lcd_d6, lcd_d7);
 
 namespace Control
@@ -40,23 +40,23 @@ void main_loop()
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_TIMER_A);
 
     __disable_irq();
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, 1);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, 2);
     hadc1.DMA_Handle->Instance->CCR &= ~(DMA_IT_TC | DMA_IT_HT);
-    HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2_buf, 1);
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2_buf, 2);
     hadc2.DMA_Handle->Instance->CCR &= ~(DMA_IT_TC | DMA_IT_HT);
     __enable_irq();
 
     lcd.init();
 
-    printf("Hello, I am working at %ld Hz\n", SystemCoreClock);
-    lcd.printf("Hello\n");
+    printf("Hello, I am working at %ldMHz\n", SystemCoreClock / 1000 / 1000);
+    lcd.printf("Hello\nWorking at %ldMHz\n", SystemCoreClock / 1000 / 1000);
 
     callback_start = true;
-    HAL_ADC_Start(&hadc1);
 
     while (1) {
         printf("%.3f V  %.4f A\n", Control::actual_voltage, Control::actual_current);
-        delay_ms(200);
+        printf("%d  %d\n", adc1_buf[1], adc2_buf[1]);
+        delay_ms(250);
     }
 }
 

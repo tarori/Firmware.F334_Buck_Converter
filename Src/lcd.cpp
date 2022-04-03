@@ -125,7 +125,7 @@ int LCD::printf(const char* format, ...)
     char buff[33];
     va_list args;
     va_start(args, format);
-    int count = snprintf(buff, sizeof(buff), format, args);
+    int count = vsnprintf(buff, sizeof(buff), format, args);
     va_end(args);
     for (int i = 0; i < count; ++i) {
         this->putc(buff[i]);
