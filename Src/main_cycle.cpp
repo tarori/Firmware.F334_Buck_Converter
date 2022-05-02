@@ -12,7 +12,7 @@
 
 extern bool callback_start;
 
-PIDRegulator v_regulator(-0.01f, -1000.0f, -0.0f, dt, 0, vbus);
+PIDRegulator v_regulator(-10.0f, -100.0f, 0, dt, 0, vbus);
 PIDRegulator i_regulator(-1.0f, -1000.0f, 0, dt, 0, vbus);
 
 alignas(4) uint16_t adc1_buf[2];
@@ -26,6 +26,8 @@ namespace Control
 {
 float actual_voltage;
 float actual_current;
+float actual_voltage_filtered = 0.0f;
+float actual_current_filtered = 0.0f;
 float target_voltage = 0.0f;
 float target_current = 0.0f;
 float output_v;
@@ -36,6 +38,9 @@ bool emergency_occured = false;
 
 void main_loop()
 {
+    HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
+
     HAL_OPAMP_Start(&hopamp2);
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_TIMER_A);
 
@@ -55,11 +60,11 @@ void main_loop()
     callback_start = true;
 
     while (1) {
-        // printf("%.3f V  %.4f A\n", Control::actual_voltage, Control::actual_current);
+        // printf("%.3f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
         lcd.locate(0, 0);
         lcd.printf("T:%6.2fV %5.2fA", Control::target_voltage, Control::target_current);
         lcd.locate(0, 1);
-        lcd.printf("A:%6.2fV %5.2fA", Control::actual_voltage, Control::actual_current);
+        lcd.printf("A:%6.2fV %5.2fA", Control::actual_voltage_filtered, Control::actual_current_filtered);
         delay_ms(250);
     }
 }
@@ -70,7 +75,7 @@ constexpr float current_step = 0.1f;
 void callback_10ms()
 {
     float voltage_volume = adc2_buf[1] / 4096.0f * 20.0f;
-    float current_volume = adc1_buf[1] / 4096.0f * 6.0f;
+    float current_volume = adc1_buf[1] / 4096.0f * 8.1f;
 
     if (voltage_volume > Control::target_voltage + voltage_step) {
         Control::target_voltage += voltage_step;
@@ -88,15 +93,17 @@ void callback_10ms()
     }
 }
 
-constexpr float vref = 3.28f;
-constexpr float shunt_resistance = 0.05f;
+constexpr float vref = 3.36f;
+constexpr float shunt_resistance = 0.0301f;
 constexpr float voltage_mul = vref / 4096 * (11.5f / 1.5f);
 constexpr float current_mul = vref / 4096 / (11.5f / 1.5f) / shunt_resistance;
-constexpr float voltage_offset = 0.32f;
-constexpr float current_offset = -0.26f;
+constexpr float voltage_offset = 0.0f;
+constexpr float current_offset = -0.62f;
+constexpr float voltage_shunt_injection = 0.0038f;
 
 constexpr float emergency_voltage = 24.0f;
 constexpr float emergency_current = 100.0f;
+constexpr float filter_tau = 0.01f;
 
 void callback_10us()
 {
@@ -105,7 +112,10 @@ void callback_10us()
     }
 
     Control::actual_voltage = adc1_buf[0] * voltage_mul + voltage_offset;
-    Control::actual_current = adc2_buf[0] * current_mul + current_offset;
+    Control::actual_current = adc2_buf[0] * current_mul + current_offset - Control::actual_voltage * voltage_shunt_injection;
+
+    Control::actual_voltage_filtered += filter_tau * (Control::actual_voltage - Control::actual_voltage_filtered);
+    Control::actual_current_filtered += filter_tau * (Control::actual_current - Control::actual_current_filtered);
 
     if (Control::actual_current > emergency_current || Control::actual_voltage > emergency_voltage) {
         pwm_free();
@@ -116,5 +126,5 @@ void callback_10us()
     Control::output_v = v_regulator(Control::actual_voltage - Control::target_voltage);
     Control::output_i = i_regulator(Control::actual_current - Control::target_current);
     Control::output = std::min(Control::output_v, Control::output_i);
-    pwm_set_duty(Control::output);
+    pwm_set_duty(Control::output, true);
 }
