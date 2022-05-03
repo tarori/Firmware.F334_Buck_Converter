@@ -8,12 +8,21 @@
 
 #include "pwm.hpp"
 #include "pid_regulator.hpp"
+#include "type3_regulator.hpp"
 #include "lcd.hpp"
 
 extern bool callback_start;
 
-PIDRegulator v_regulator(-10.0f, -100.0f, 0, dt, 0, vbus);
-PIDRegulator i_regulator(-1.0f, -1000.0f, 0, dt, 0, vbus);
+/*
+wz1=0.75/sqrt(LoutCout)
+wz2=1/sqrt(LoutCout)
+wp0=min(wz1,wp2)
+wp2=1/(Cout*ESR)
+wp3=2PI*fsw/2
+*/
+
+TYPE3Regulator v_regulator(3450, 4600, 500, 100000, 314000, dt, 0, vout_max);
+PIDRegulator i_regulator(1.0f, 1000.0f, 0, dt, 0, vout_max);
 
 alignas(4) uint16_t adc1_buf[2];
 alignas(4) uint16_t adc2_buf[2];
@@ -123,8 +132,9 @@ void callback_10us()
         return;
     }
 
-    Control::output_v = v_regulator(Control::actual_voltage - Control::target_voltage);
-    Control::output_i = i_regulator(Control::actual_current - Control::target_current);
+    Control::output_v = v_regulator(Control::target_voltage - Control::actual_voltage);
+    Control::output_i = i_regulator(Control::target_current - Control::actual_current);
     Control::output = std::min(Control::output_v, Control::output_i);
+    v_regulator.set_actual_output(Control::output);
     pwm_set_duty(Control::output, true);
 }

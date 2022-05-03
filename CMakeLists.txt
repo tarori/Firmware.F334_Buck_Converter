@@ -27,7 +27,7 @@ endif()
 
 # set compiler option
 set(COMPILER_OPT_FLAGS "-O2")
-set(COMMON_COMPILER_FLAGS "-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DUSE_HAL_DRIVER -DSTM32F334x8  -fdata-sections -ffunction-sections -Wall -Wextra  -Wno-missing-field-initializers ${COMPILER_OPT_FLAGS}")
+set(COMMON_COMPILER_FLAGS "-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -DUSE_HAL_DRIVER -DSTM32F334x8  -fdata-sections -ffunction-sections -Wall -Wextra -Wno-missing-field-initializers ${COMPILER_OPT_FLAGS}")
 set(CMAKE_C_FLAGS "${COMMON_COMPILER_FLAGS} -std=gnu99")
 set(CMAKE_C_FLAGS_DEBUG "-g")
 set(CMAKE_FLAGS_RELEASE "")
