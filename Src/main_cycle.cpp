@@ -21,10 +21,10 @@ wp2=1/(Cout*ESR)
 wp3=2PI*fsw/2
 */
 
-TYPE3Regulator v_regulator(3450, 4600, 500, 100000, 314000, dt, 0, vout_max);
+TYPE3Regulator v_regulator(3450, 4600, 10000, 100000, 314000, dt, 0, vout_max);
 PIDRegulator i_regulator(1.0f, 1000.0f, 0, dt, 0, vout_max);
 
-alignas(4) uint16_t adc1_buf[2];
+alignas(4) uint16_t adc1_buf[3];
 alignas(4) uint16_t adc2_buf[2];
 
 GPIO_PIN lcd_e(GPIOA, GPIO_PIN_1), lcd_rs(GPIOA, GPIO_PIN_2);
@@ -54,9 +54,9 @@ void main_loop()
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_TIMER_A);
 
     __disable_irq();
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, 2);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, sizeof(adc1_buf) / sizeof(uint16_t));
     hadc1.DMA_Handle->Instance->CCR &= ~(DMA_IT_TC | DMA_IT_HT);
-    HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2_buf, 2);
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2_buf, sizeof(adc2_buf) / sizeof(uint16_t));
     hadc2.DMA_Handle->Instance->CCR &= ~(DMA_IT_TC | DMA_IT_HT);
     __enable_irq();
 
@@ -120,7 +120,7 @@ void callback_10us()
         return;
     }
 
-    Control::actual_voltage = adc1_buf[0] * voltage_mul + voltage_offset;
+    Control::actual_voltage = (adc1_buf[0] + adc1_buf[2]) * 0.5f * voltage_mul + voltage_offset;
     Control::actual_current = adc2_buf[0] * current_mul + current_offset - Control::actual_voltage * voltage_shunt_injection;
 
     Control::actual_voltage_filtered += filter_tau * (Control::actual_voltage - Control::actual_voltage_filtered);
