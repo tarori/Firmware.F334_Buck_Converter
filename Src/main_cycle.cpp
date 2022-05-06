@@ -22,7 +22,7 @@ wp3=2PI*fsw/2
 */
 
 TYPE3Regulator v_regulator(3450, 4600, 10000, 100000, 314000, dt, 0, vout_max);
-PIDRegulator i_regulator(1.0f, 1000.0f, 0, dt, 0, vout_max);
+TYPE3Regulator i_regulator(3450, 4600, 1000, 100000, 314000, dt, 0, vout_max);
 
 alignas(4) uint16_t adc1_buf[3];
 alignas(4) uint16_t adc2_buf[2];
