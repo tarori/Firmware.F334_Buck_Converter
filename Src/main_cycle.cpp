@@ -51,6 +51,7 @@ void main_loop()
     HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
 
     HAL_OPAMP_Start(&hopamp2);
+    HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_MASTER);
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_TIMER_A);
 
     __disable_irq();

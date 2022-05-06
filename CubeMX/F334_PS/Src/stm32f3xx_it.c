@@ -229,17 +229,17 @@ void DMA1_Channel2_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles HRTIM timer A global interrupt.
+  * @brief This function handles HRTIM master timer global interrupt.
   */
-void HRTIM1_TIMA_IRQHandler(void)
+void HRTIM1_Master_IRQHandler(void)
 {
-  /* USER CODE BEGIN HRTIM1_TIMA_IRQn 0 */
+  /* USER CODE BEGIN HRTIM1_Master_IRQn 0 */
 
-  /* USER CODE END HRTIM1_TIMA_IRQn 0 */
-  HAL_HRTIM_IRQHandler(&hhrtim1,HRTIM_TIMERINDEX_TIMER_A);
-  /* USER CODE BEGIN HRTIM1_TIMA_IRQn 1 */
+  /* USER CODE END HRTIM1_Master_IRQn 0 */
+  HAL_HRTIM_IRQHandler(&hhrtim1,HRTIM_TIMERINDEX_MASTER);
+  /* USER CODE BEGIN HRTIM1_Master_IRQn 1 */
 
-  /* USER CODE END HRTIM1_TIMA_IRQn 1 */
+  /* USER CODE END HRTIM1_Master_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
