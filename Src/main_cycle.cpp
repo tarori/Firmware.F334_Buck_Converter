@@ -33,16 +33,16 @@ LCD lcd(lcd_rs, lcd_e, lcd_d4, lcd_d5, lcd_d6, lcd_d7);
 
 namespace Control
 {
-float actual_voltage;
-float actual_current;
-float actual_voltage_filtered = 0.0f;
-float actual_current_filtered = 0.0f;
-float target_voltage = 0.0f;
-float target_current = 0.0f;
-float output_v;
-float output_i;
-float output;
-bool emergency_occured = false;
+volatile float actual_voltage;
+volatile float actual_current;
+volatile float actual_voltage_filtered = 0.0f;
+volatile float actual_current_filtered = 0.0f;
+volatile float target_voltage = 0.0f;
+volatile float target_current = 0.0f;
+volatile float output_v;
+volatile float output_i;
+volatile float output;
+volatile bool emergency_occured = false;
 }  // namespace Control
 
 void main_loop()
@@ -84,8 +84,8 @@ constexpr float current_step = 0.1f;
 
 void callback_10ms()
 {
-    float voltage_volume = adc2_buf[1] / 4096.0f * 20.0f;
-    float current_volume = adc1_buf[1] / 4096.0f * 8.1f;
+    float voltage_volume = adc2_buf[1] / 4095.0f * 20.0f;
+    float current_volume = adc1_buf[1] / 4095.0f * 8.1f;
 
     if (voltage_volume > Control::target_voltage + voltage_step) {
         Control::target_voltage += voltage_step;
@@ -105,11 +105,11 @@ void callback_10ms()
 
 constexpr float vref = 3.36f;
 constexpr float shunt_resistance = 0.0301f;
-constexpr float voltage_mul = vref / 4096 * (11.5f / 1.5f);
-constexpr float current_mul = vref / 4096 / (11.5f / 1.5f) / shunt_resistance;
+constexpr float voltage_mul = vref / 4095 * (11.5f / 1.5f);
+constexpr float current_mul = vref / 4095 / (11.5f / 1.5f) / shunt_resistance;
 constexpr float voltage_offset = 0.0f;
-constexpr float current_offset = -0.62f;
-constexpr float voltage_shunt_injection = 0.0038f;
+constexpr float current_offset = -0.59f;
+constexpr float voltage_shunt_injection = -0.0005f;
 
 constexpr float emergency_voltage = 24.0f;
 constexpr float emergency_current = 100.0f;
