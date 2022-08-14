@@ -115,7 +115,7 @@ constexpr float emergency_voltage = 24.0f;
 constexpr float emergency_current = 100.0f;
 constexpr float filter_tau = 0.01f;
 
-void callback_10us()
+__attribute__((long_call, section(".ccmram"))) void callback_10us()
 {
     if (Control::emergency_occured) {
         return;

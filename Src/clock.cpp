@@ -78,16 +78,16 @@ void SysTick_Handler()
 /**
  * @brief This function handles HRTIM master timer global interrupt.
  */
-void HRTIM1_Master_IRQHandler(void)
+__attribute__((long_call, section(".ccmram"))) void HRTIM1_Master_IRQHandler(void)
 {
-    GPIOA->BSRR = (uint32_t)GPIO_PIN_10;
+    SET_BIT(GPIOA->BSRR, GPIO_PIN_10);
     // HAL_HRTIM_IRQHandler(&hhrtim1, HRTIM_TIMERINDEX_MASTER);
     __HAL_HRTIM_MASTER_CLEAR_IT(&hhrtim1, HRTIM_MASTER_IT_MREP);
     if (!callback_start) {
         return;
     }
     callback_10us();
-    GPIOA->BRR = (uint32_t)GPIO_PIN_10;
+    SET_BIT(GPIOA->BRR, GPIO_PIN_10);
 }
 
 /**
