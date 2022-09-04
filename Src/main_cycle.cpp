@@ -104,12 +104,12 @@ void callback_10ms()
 }
 
 constexpr float vref = 3.36f;
-constexpr float shunt_resistance = 0.0301f;
+constexpr float shunt_resistance = 0.00942;
 constexpr float voltage_mul = vref / 4095 * (11.5f / 1.5f);
-constexpr float current_mul = vref / 4095 / (11.5f / 1.5f) / shunt_resistance;
+constexpr float current_mul = vref / 4095 / (10.75f / 0.75f) / shunt_resistance;
 constexpr float voltage_offset = 0.0f;
-constexpr float current_offset = -0.59f;
-constexpr float voltage_shunt_injection = -0.0005f;
+constexpr float current_offset = -1.002f;
+constexpr float voltage_shunt_injection = 0.0f;
 
 constexpr float emergency_voltage = 24.0f;
 constexpr float emergency_current = 100.0f;

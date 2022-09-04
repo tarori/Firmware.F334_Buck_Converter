@@ -86,6 +86,7 @@ __attribute__((long_call, section(".ccmram"))) void HRTIM1_Master_IRQHandler(voi
     if (!callback_start) {
         return;
     }
+
     callback_10us();
     SET_BIT(GPIOA->BRR, GPIO_PIN_10);
 }
