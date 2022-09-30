@@ -70,7 +70,7 @@ void main_loop()
     callback_start = true;
 
     while (1) {
-        printf("%.3f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
+        // printf("%.3f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
         lcd.locate(0, 0);
         lcd.printf("T:%6.2fV %5.2fA", Control::target_voltage, Control::target_current);
         lcd.locate(0, 1);
@@ -85,7 +85,7 @@ constexpr float current_step = 0.1f;
 void callback_10ms()
 {
     float voltage_volume = adc2_buf[1] / 4095.0f * 20.0f;
-    float current_volume = adc1_buf[1] / 4095.0f * 8.1f;
+    float current_volume = adc1_buf[1] / 4095.0f * 6.1f;
 
     if (voltage_volume > Control::target_voltage + voltage_step) {
         Control::target_voltage += voltage_step;
@@ -103,12 +103,12 @@ void callback_10ms()
     }
 }
 
-constexpr float vref = 3.29f;
-constexpr float shunt_resistance = 0.0097f;
+constexpr float vref = 3.30f;
+constexpr float shunt_resistance = 0.00925f;
 constexpr float voltage_mul = vref / 4095 * (11.0f / 1.0f);
-constexpr float current_mul = vref / 4095 / (10.382f / 0.382f) / shunt_resistance;
+constexpr float current_mul = vref / 4095 / (10.399f / 0.399f) / shunt_resistance;
 constexpr float voltage_offset = 0.0f;
-constexpr float current_offset = -0.385f;
+constexpr float current_offset = 160.6f;
 constexpr float voltage_shunt_injection = 0.0f;
 
 constexpr float emergency_voltage = 24.0f;
@@ -122,7 +122,7 @@ __attribute__((long_call, section(".ccmram"))) void callback_10us()
     }
 
     Control::actual_voltage = (adc1_buf[0] + adc1_buf[2]) * 0.5f * voltage_mul + voltage_offset;
-    Control::actual_current = adc2_buf[0] * current_mul + current_offset - Control::actual_voltage * voltage_shunt_injection;
+    Control::actual_current = (adc2_buf[0] - current_offset) * current_mul - Control::actual_voltage * voltage_shunt_injection;
 
     Control::actual_voltage_filtered += filter_tau * (Control::actual_voltage - Control::actual_voltage_filtered);
     Control::actual_current_filtered += filter_tau * (Control::actual_current - Control::actual_current_filtered);

@@ -18,7 +18,7 @@ void LCD::init()
     // send "Display Settings" 3 times (Only top nibble of 0x30 as we've got 4-bit bus)
     for (int i = 0; i < 3; i++) {
         writeByte(0x03);
-        delay_us(1640);  // this command takes 1.64ms, so wait for it
+        delay_us(4100);  // this command takes 4.1ms
     }
     writeByte(0x02);  // 4-bit mode
     delay_us(40);     // most instructions take 40us
@@ -81,6 +81,9 @@ void LCD::writeBus(uint8_t value)
 
 void LCD::writeByte(uint8_t value)
 {
+    e = 0;
+    delay_us(40);
+    e = 1;
     writeBus(value >> 4);
     delay_us(40);
     e = 0;
@@ -90,7 +93,6 @@ void LCD::writeByte(uint8_t value)
     delay_us(40);
     e = 0;
     delay_us(40);
-    e = 1;
 }
 
 void LCD::writeCommand(uint8_t command)

@@ -43,11 +43,9 @@ void MX_OPAMP2_Init(void)
   hopamp2.Init.InvertingInput = OPAMP_INVERTINGINPUT_IO1;
   hopamp2.Init.TimerControlledMuxmode = OPAMP_TIMERCONTROLLEDMUXMODE_DISABLE;
   hopamp2.Init.UserTrimming = OPAMP_TRIMMING_USER;
+  hopamp2.Init.TrimmingValueP = 14;
+  hopamp2.Init.TrimmingValueN = 18;
   if (HAL_OPAMP_Init(&hopamp2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_OPAMP_SelfCalibrate(&hopamp2) != HAL_OK)
   {
     Error_Handler();
   }
