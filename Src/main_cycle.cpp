@@ -70,7 +70,7 @@ void main_loop()
     callback_start = true;
 
     while (1) {
-        // printf("%.3f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
+        printf("%.3f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
         lcd.locate(0, 0);
         lcd.printf("T:%6.2fV %5.2fA", Control::target_voltage, Control::target_current);
         lcd.locate(0, 1);

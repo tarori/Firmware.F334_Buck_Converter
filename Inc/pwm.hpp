@@ -7,7 +7,7 @@ constexpr uint32_t pwm_period = 15360;
 constexpr float pwm_max = 0.9f;
 constexpr float vbus = 20.0f;
 constexpr float dt = 10 * 1e-6;
-constexpr uint32_t deadtime = 4 * 100;
+constexpr uint32_t deadtime = 4 * 75;
 constexpr float vout_max = pwm_max * vbus;
 
 constexpr HRTIM_HandleTypeDef* hhrtim = &hhrtim1;
