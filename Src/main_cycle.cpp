@@ -70,6 +70,10 @@ void main_loop()
     callback_start = true;
 
     while (1) {
+        static uint32_t lcd_clear_count = 0;
+        if (lcd_clear_count++ % 100 == 0) {
+            lcd.cls();
+        }
         // printf("%.3f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
         lcd.locate(0, 0);
         lcd.printf("T:%6.2fV %5.2fA", Control::target_voltage, Control::target_current);
@@ -104,7 +108,7 @@ void callback_10ms()
 }
 
 constexpr float vref = 3.30f;
-constexpr float shunt_resistance = 0.00925f;
+constexpr float shunt_resistance = 0.02395f;
 constexpr float voltage_mul = vref / 4095 * (11.0f / 1.0f);
 constexpr float current_mul = vref / 4095 / (10.399f / 0.399f) / shunt_resistance;
 constexpr float voltage_offset = 0.0f;
