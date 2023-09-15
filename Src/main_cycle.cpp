@@ -1,8 +1,8 @@
 #include "main_cycle.hpp"
 #include "utils.hpp"
 #include "hrtim.h"
-#include "opamp.h"
 #include "adc.h"
+#include "dac.h"
 #include "clock.hpp"
 #include <stm32f3xx.h>
 
@@ -24,7 +24,7 @@ wp3=2PI*fsw/2
 TYPE3Regulator v_regulator(3450, 4600, 10000, 100000, 314000, dt, 0, vout_max);
 TYPE3Regulator i_regulator(3450, 4600, 1000, 100000, 314000, dt, 0, vout_max);
 
-alignas(4) uint16_t adc1_buf[3];
+alignas(4) uint16_t adc1_buf[2];
 alignas(4) uint16_t adc2_buf[2];
 
 GPIO_PIN lcd_e(GPIOA, GPIO_PIN_1), lcd_rs(GPIOA, GPIO_PIN_2);
@@ -39,6 +39,7 @@ volatile float actual_voltage_filtered = 0.0f;
 volatile float actual_current_filtered = 0.0f;
 volatile float target_voltage = 0.0f;
 volatile float target_current = 0.0f;
+volatile float dac_voltage = 0.0f;
 volatile float output_v;
 volatile float output_i;
 volatile float output;
@@ -50,7 +51,15 @@ void main_loop()
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
     HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
 
-    HAL_OPAMP_Start(&hopamp2);
+    HAL_DAC_Start(&hdac1, DAC1_CHANNEL_2);
+    uint32_t code = 0;
+    while(1) {
+        HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_2, DAC_ALIGN_12B_R, code);
+        code = (code + 1) % 4096;
+        printf("%d\n", code);
+        delay_ms(1);
+    }
+
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_MASTER);
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_TIMER_A);
 
@@ -74,6 +83,12 @@ void main_loop()
         if (lcd_clear_count++ % 100 == 0) {
             lcd.cls();
         }
+        if (Control::emergency_occured) {
+            printf("Emergency\n");
+            continue;
+        }
+
+        printf("%.3f V %.3f V\n", Control::dac_voltage, Control::actual_voltage);
         // printf("%.3f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
         lcd.locate(0, 0);
         lcd.printf("T:%6.2fV %5.2fA", Control::target_voltage, Control::target_current);
@@ -88,6 +103,7 @@ constexpr float current_step = 0.1f;
 
 void callback_10ms()
 {
+    /*
     float voltage_volume = adc2_buf[1] / 4095.0f * 20.0f;
     float current_volume = adc1_buf[1] / 4095.0f * 6.1f;
 
@@ -105,15 +121,18 @@ void callback_10ms()
     if (current_volume < Control::target_current - current_step) {
         Control::target_current -= current_step;
     }
+    */
+
+   Control::target_current = 3.0f;
+   Control::target_voltage = 3.3f;
 }
 
 constexpr float vref = 3.30f;
-constexpr float shunt_resistance = 0.02395f;
-constexpr float voltage_mul = vref / 4095 * (11.0f / 1.0f);
-constexpr float current_mul = vref / 4095 / (10.399f / 0.399f) / shunt_resistance;
-constexpr float voltage_offset = 0.0f;
+constexpr float voltage_div = 11.0f / 1.0f;
+constexpr float voltage_gain = 11.0f;
+constexpr float shunt_resistance = 0.010f;
+constexpr float current_mul = vref / 4095 / (10.382f / 0.382f) / shunt_resistance;
 constexpr float current_offset = 160.6f;
-constexpr float voltage_shunt_injection = 0.0f;
 
 constexpr float emergency_voltage = 24.0f;
 constexpr float emergency_current = 100.0f;
@@ -125,8 +144,12 @@ __attribute__((long_call, section(".ccmram"))) void callback_10us()
         return;
     }
 
-    Control::actual_voltage = (adc1_buf[0] + adc1_buf[2]) * 0.5f * voltage_mul + voltage_offset;
-    Control::actual_current = (adc2_buf[0] - current_offset) * current_mul - Control::actual_voltage * voltage_shunt_injection;
+    Control::dac_voltage = ((voltage_gain / voltage_div * Control::target_voltage) + vref / 2) / (voltage_gain + 1);
+    HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_2, DAC_ALIGN_12B_R, Control::dac_voltage / vref * 4095.0f);
+
+    Control::actual_voltage = voltage_gain * (Control::dac_voltage - adc2_buf[0] * vref / 4095.0f) + Control::target_voltage;
+
+    Control::actual_current = (adc1_buf[0] - current_offset) * current_mul;
 
     Control::actual_voltage_filtered += filter_tau * (Control::actual_voltage - Control::actual_voltage_filtered);
     Control::actual_current_filtered += filter_tau * (Control::actual_current - Control::actual_current_filtered);
@@ -141,5 +164,6 @@ __attribute__((long_call, section(".ccmram"))) void callback_10us()
     Control::output_i = i_regulator(Control::target_current - Control::actual_current);
     Control::output = std::min(Control::output_v, Control::output_i);
     v_regulator.set_actual_output(Control::output);
-    pwm_set_duty(Control::output, true);
+    // pwm_set_duty(Control::output, true);
+    pwm_set_duty(10.0f, true);
 }
