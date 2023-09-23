@@ -21,8 +21,9 @@ wp2=1/(Cout*ESR)
 wp3=2PI*fsw/2
 */
 
-TYPE3Regulator v_regulator(3450, 4600, 10000, 100000, 314000, dt, 0, vout_max);
-TYPE3Regulator i_regulator(3450, 4600, 1000, 100000, 314000, dt, 0, vout_max);
+// TYPE3Regulator v_regulator(3450, 4600, 10000, 100000, 314000, dt, 0, vout_max);
+TYPE3Regulator v_regulator(3768, 5157, 3768, 14857, 314159, dt, 0, vout_max);
+TYPE3Regulator i_regulator(3768, 5157, 3768, 14857, 314159, dt, 0, vout_max);
 
 alignas(4) uint16_t adc1_buf[2];
 alignas(4) uint16_t adc2_buf[2];
@@ -52,16 +53,16 @@ void main_loop()
     HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
 
     HAL_DAC_Start(&hdac1, DAC1_CHANNEL_2);
-    uint32_t code = 0;
-    while(1) {
-        HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_2, DAC_ALIGN_12B_R, code);
-        code = (code + 1) % 4096;
-        printf("%d\n", code);
-        delay_ms(1);
-    }
+
+    hhrtim1.TimerParam[HRTIM_TIMERINDEX_TIMER_A].DMASrcAddress = (uint32_t)((void*)pwm_cnt_buf);
+    hhrtim1.TimerParam[HRTIM_TIMERINDEX_TIMER_A].DMADstAddress = (uint32_t)((void*)&hhrtim1.Instance->sTimerxRegs[HRTIM_TIMERINDEX_TIMER_A].CMP1xR);
+    hhrtim1.TimerParam[HRTIM_TIMERINDEX_TIMER_A].DMASize = pwm_avg_num;
 
     HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_MASTER);
-    HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERID_TIMER_A);
+    __disable_irq();
+    HAL_HRTIM_WaveformCountStart_DMA(&hhrtim1, HRTIM_TIMERID_TIMER_A);
+    hhrtim1.hdmaTimerA->Instance->CCR &= ~(DMA_IT_TC | DMA_IT_HT);
+    __enable_irq();
 
     __disable_irq();
     HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, sizeof(adc1_buf) / sizeof(uint16_t));
@@ -88,8 +89,8 @@ void main_loop()
             continue;
         }
 
-        printf("%.3f V %.3f V\n", Control::dac_voltage, Control::actual_voltage);
-        // printf("%.3f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
+        // printf("%.3f V %.3f V\n", Control::dac_voltage, Control::actual_voltage);
+        printf("%.5f V  %.4f A\n", Control::actual_voltage_filtered, Control::actual_current_filtered);
         lcd.locate(0, 0);
         lcd.printf("T:%6.2fV %5.2fA", Control::target_voltage, Control::target_current);
         lcd.locate(0, 1);
@@ -123,8 +124,8 @@ void callback_10ms()
     }
     */
 
-   Control::target_current = 3.0f;
-   Control::target_voltage = 3.3f;
+    Control::target_current = 3.0f;
+    Control::target_voltage = 5.0f;
 }
 
 constexpr float vref = 3.30f;
@@ -132,7 +133,7 @@ constexpr float voltage_div = 11.0f / 1.0f;
 constexpr float voltage_gain = 11.0f;
 constexpr float shunt_resistance = 0.010f;
 constexpr float current_mul = vref / 4095 / (10.382f / 0.382f) / shunt_resistance;
-constexpr float current_offset = 160.6f;
+constexpr float current_offset = 158.4f;
 
 constexpr float emergency_voltage = 24.0f;
 constexpr float emergency_current = 100.0f;
@@ -147,7 +148,7 @@ __attribute__((long_call, section(".ccmram"))) void callback_10us()
     Control::dac_voltage = ((voltage_gain / voltage_div * Control::target_voltage) + vref / 2) / (voltage_gain + 1);
     HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_2, DAC_ALIGN_12B_R, Control::dac_voltage / vref * 4095.0f);
 
-    Control::actual_voltage = voltage_gain * (Control::dac_voltage - adc2_buf[0] * vref / 4095.0f) + Control::target_voltage;
+    Control::actual_voltage = ((1 + voltage_gain) * Control::dac_voltage - adc2_buf[0] * vref / 4095.0f) / voltage_gain * voltage_div;
 
     Control::actual_current = (adc1_buf[0] - current_offset) * current_mul;
 
@@ -164,6 +165,6 @@ __attribute__((long_call, section(".ccmram"))) void callback_10us()
     Control::output_i = i_regulator(Control::target_current - Control::actual_current);
     Control::output = std::min(Control::output_v, Control::output_i);
     v_regulator.set_actual_output(Control::output);
-    // pwm_set_duty(Control::output, true);
-    pwm_set_duty(10.0f, true);
+    pwm_set_duty(Control::output, true);
+    // pwm_set_duty(10.0f, true);
 }

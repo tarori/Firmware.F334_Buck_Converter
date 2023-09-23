@@ -53,14 +53,12 @@ include_directories("Inc" "CubeMX/F334_PS/Inc" "CubeMX/F334_PS/Drivers/CMSIS/Dev
 file(GLOB PERIPH_LIB_SOURCE "CubeMX/F334_PS/Src/*.c" "CubeMX/F334_PS/Drivers/STM32F3xx_HAL_Driver/Src/*.c" "CubeMX/F334_PS/*.s")
 list(REMOVE_ITEM PERIPH_LIB_SOURCE "${CMAKE_SOURCE_DIR}/CubeMX/F334_PS/Src/main.c")
 list(REMOVE_ITEM PERIPH_LIB_SOURCE "${CMAKE_SOURCE_DIR}/CubeMX/F334_PS/Src/stm32f3xx_it.c")
-add_library(periph-lib STATIC ${PERIPH_LIB_SOURCE})
 
 set(CMAKE_EXE_LINKER_FLAGS "-mcpu=cortex-m4  -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -specs=nano.specs -T ${CMAKE_SOURCE_DIR}/CubeMX/F334_PS/STM32F334K8Tx_FLASH.ld -L. -lc -lm -u _printf_float -Wl,-Map=${CMAKE_PROJECT_NAME}.map,--cref -Wl,--gc-sections -Wl,--print-memory-usage")
 
 file(GLOB MAIN_SOURCE "Src/*.cpp" "Src/*.c")
 
-add_executable(${PROJECT_NAME}.elf ${MAIN_SOURCE})
-target_link_libraries(${PROJECT_NAME}.elf periph-lib)
+add_executable(${PROJECT_NAME}.elf ${MAIN_SOURCE} ${PERIPH_LIB_SOURCE})
 add_custom_target(${PROJECT_NAME}.hex ALL
     COMMAND arm-none-eabi-objcopy --output-format=ihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex DEPENDS ${PROJECT_NAME}.elf)
 add_custom_target(write COMMAND /mnt/c/Program\ Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe -c port=SWD freq=1000 -d ./${PROJECT_NAME}.elf -s DEPENDS ${PROJECT_NAME}.hex)

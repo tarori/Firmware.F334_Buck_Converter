@@ -25,6 +25,7 @@
 /* USER CODE END 0 */
 
 HRTIM_HandleTypeDef hhrtim1;
+DMA_HandleTypeDef hdma_hrtim1_a;
 
 /* HRTIM1 init function */
 void MX_HRTIM1_Init(void)
@@ -90,13 +91,14 @@ void MX_HRTIM1_Init(void)
   {
     Error_Handler();
   }
-  pTimeBaseCfg.Period = 9216;
+  pTimeBaseCfg.Period = 4608;
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, &pTimeBaseCfg) != HAL_OK)
   {
     Error_Handler();
   }
   pTimerCfg.InterruptRequests = HRTIM_TIM_IT_NONE;
-  pTimerCfg.DMARequests = HRTIM_TIM_DMA_NONE;
+  pTimerCfg.DMARequests = HRTIM_TIM_DMA_UPD;
+  pTimerCfg.DMASize = 1;
   pTimerCfg.PreloadEnable = HRTIM_PRELOAD_ENABLED;
   pTimerCfg.RepetitionUpdate = HRTIM_UPDATEONREPETITION_ENABLED;
   pTimerCfg.PushPull = HRTIM_TIMPUSHPULLMODE_DISABLED;
@@ -165,6 +167,23 @@ void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hrtimHandle)
     /* HRTIM1 clock enable */
     __HAL_RCC_HRTIM1_CLK_ENABLE();
 
+    /* HRTIM1 DMA Init */
+    /* HRTIM1_A Init */
+    hdma_hrtim1_a.Instance = DMA1_Channel3;
+    hdma_hrtim1_a.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_hrtim1_a.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_hrtim1_a.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_hrtim1_a.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    hdma_hrtim1_a.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    hdma_hrtim1_a.Init.Mode = DMA_CIRCULAR;
+    hdma_hrtim1_a.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_hrtim1_a) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(hrtimHandle,hdmaTimerA,hdma_hrtim1_a);
+
     /* HRTIM1 interrupt Init */
     HAL_NVIC_SetPriority(HRTIM1_Master_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(HRTIM1_Master_IRQn);
@@ -213,6 +232,9 @@ void HAL_HRTIM_MspDeInit(HRTIM_HandleTypeDef* hrtimHandle)
   /* USER CODE END HRTIM1_MspDeInit 0 */
     /* Peripheral clock disable */
     __HAL_RCC_HRTIM1_CLK_DISABLE();
+
+    /* HRTIM1 DMA DeInit */
+    HAL_DMA_DeInit(hrtimHandle->hdmaTimerA);
 
     /* HRTIM1 interrupt Deinit */
     HAL_NVIC_DisableIRQ(HRTIM1_Master_IRQn);

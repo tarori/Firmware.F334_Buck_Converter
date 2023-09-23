@@ -64,6 +64,7 @@ extern "C" {
 extern DMA_HandleTypeDef hdma_adc1;
 extern DMA_HandleTypeDef hdma_adc2;
 extern HRTIM_HandleTypeDef hhrtim1;
+extern DMA_HandleTypeDef hdma_hrtim1_a;
 
 bool callback_start = false;
 void SysTick_Handler()
@@ -107,5 +108,14 @@ void DMA1_Channel2_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(&hdma_adc2);
     printf("DMA2 handler called\n");
+}
+
+/**
+ * @brief This function handles DMA1 channel3 global interrupt.
+ */
+void DMA1_Channel3_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(&hdma_hrtim1_a);
+    printf("DMA3 handler called\n");
 }
 }  // extern "C"
