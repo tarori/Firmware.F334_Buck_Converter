@@ -81,7 +81,7 @@ void SysTick_Handler()
  */
 __attribute__((long_call, section(".ccmram"))) void HRTIM1_Master_IRQHandler(void)
 {
-    SET_BIT(GPIOA->BSRR, GPIO_PIN_10);
+    SET_BIT(GPIOB->BSRR, GPIO_PIN_4);
     // HAL_HRTIM_IRQHandler(&hhrtim1, HRTIM_TIMERINDEX_MASTER);
     __HAL_HRTIM_MASTER_CLEAR_IT(&hhrtim1, HRTIM_MASTER_IT_MREP);
     if (!callback_start) {
@@ -89,7 +89,7 @@ __attribute__((long_call, section(".ccmram"))) void HRTIM1_Master_IRQHandler(voi
     }
 
     callback_10us();
-    SET_BIT(GPIOA->BRR, GPIO_PIN_10);
+    SET_BIT(GPIOB->BRR, GPIO_PIN_4);
 }
 
 /**

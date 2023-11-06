@@ -4,7 +4,7 @@
 #include <algorithm>
 
 constexpr uint32_t pwm_period = 4608;
-constexpr float pwm_max = 0.9f;
+constexpr float pwm_max = 0.80f;
 constexpr float vbus = 20.0f;
 constexpr float dt = 10 * 1e-6;
 constexpr uint32_t deadtime = 4 * 75;

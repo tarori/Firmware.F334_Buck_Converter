@@ -1,15 +1,16 @@
 #include "main_cycle.hpp"
 #include "utils.hpp"
 #include "hrtim.h"
+#include "lcd.hpp"
 #include "adc.h"
 #include "dac.h"
+#include "i2c.h"
 #include "clock.hpp"
 #include <stm32f3xx.h>
 
 #include "pwm.hpp"
 #include "pid_regulator.hpp"
 #include "type3_regulator.hpp"
-#include "lcd.hpp"
 
 extern bool callback_start;
 
@@ -28,9 +29,7 @@ TYPE3Regulator i_regulator(3768, 5157, 3768, 14857, 314159, dt, 0, vout_max);
 alignas(4) uint16_t adc1_buf[2];
 alignas(4) uint16_t adc2_buf[2];
 
-GPIO_PIN lcd_e(GPIOA, GPIO_PIN_1), lcd_rs(GPIOA, GPIO_PIN_2);
-GPIO_PIN lcd_d4(GPIOA, GPIO_PIN_0), lcd_d5(GPIOB, GPIO_PIN_7), lcd_d6(GPIOB, GPIO_PIN_5), lcd_d7(GPIOA, GPIO_PIN_12);
-LCD lcd(lcd_rs, lcd_e, lcd_d4, lcd_d5, lcd_d6, lcd_d7);
+LCD lcd(&hi2c1);
 
 namespace Control
 {
@@ -41,6 +40,7 @@ volatile float actual_current_filtered = 0.0f;
 volatile float target_voltage = 0.0f;
 volatile float target_current = 0.0f;
 volatile float dac_voltage = 0.0f;
+volatile float target_dac_voltage = 0.0f;
 volatile float output_v;
 volatile float output_i;
 volatile float output;
@@ -71,19 +71,15 @@ void main_loop()
     hadc2.DMA_Handle->Instance->CCR &= ~(DMA_IT_TC | DMA_IT_HT);
     __enable_irq();
 
-    lcd.init();
-
     printf("Hello, I am working at %ldMHz\n", SystemCoreClock / 1000 / 1000);
+    lcd.init();
+    lcd.setBacklight(1);
     lcd.printf("Hello\nWorking at %ldMHz\n", SystemCoreClock / 1000 / 1000);
     delay_ms(1000);
 
     callback_start = true;
 
     while (1) {
-        static uint32_t lcd_clear_count = 0;
-        if (lcd_clear_count++ % 100 == 0) {
-            lcd.cls();
-        }
         if (Control::emergency_occured) {
             printf("Emergency\n");
             continue;
@@ -104,7 +100,6 @@ constexpr float current_step = 0.1f;
 
 void callback_10ms()
 {
-    /*
     float voltage_volume = adc2_buf[1] / 4095.0f * 20.0f;
     float current_volume = adc1_buf[1] / 4095.0f * 6.1f;
 
@@ -122,10 +117,6 @@ void callback_10ms()
     if (current_volume < Control::target_current - current_step) {
         Control::target_current -= current_step;
     }
-    */
-
-    Control::target_current = 3.0f;
-    Control::target_voltage = 5.0f;
 }
 
 constexpr float vref = 3.30f;
@@ -133,7 +124,7 @@ constexpr float voltage_div = 11.0f / 1.0f;
 constexpr float voltage_gain = 11.0f;
 constexpr float shunt_resistance = 0.010f;
 constexpr float current_mul = vref / 4095 / (10.382f / 0.382f) / shunt_resistance;
-constexpr float current_offset = 158.4f;
+constexpr float current_offset = 167.2f;
 
 constexpr float emergency_voltage = 24.0f;
 constexpr float emergency_current = 100.0f;
@@ -145,10 +136,11 @@ __attribute__((long_call, section(".ccmram"))) void callback_10us()
         return;
     }
 
-    Control::dac_voltage = ((voltage_gain / voltage_div * Control::target_voltage) + vref / 2) / (voltage_gain + 1);
+    Control::target_dac_voltage = ((voltage_gain / voltage_div * Control::target_voltage) + vref / 2) / (voltage_gain + 1);
+    Control::dac_voltage += (Control::target_dac_voltage - Control::dac_voltage) * 0.25f;
     HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_2, DAC_ALIGN_12B_R, Control::dac_voltage / vref * 4095.0f);
 
-    Control::actual_voltage = ((1 + voltage_gain) * Control::dac_voltage - adc2_buf[0] * vref / 4095.0f) / voltage_gain * voltage_div;
+    Control::actual_voltage = ((1 + voltage_gain) * Control::target_dac_voltage - adc2_buf[0] * vref / 4095.0f) / voltage_gain * voltage_div;
 
     Control::actual_current = (adc1_buf[0] - current_offset) * current_mul;
 
